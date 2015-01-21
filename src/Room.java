@@ -43,6 +43,7 @@ class Room implements Runnable {
 			addRoomStatement.setString(2, description);
 			addRoomStatement.setString(3, host);
 			addRoomStatement.setInt(4, port);
+			addRoomStatement.executeQuery();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

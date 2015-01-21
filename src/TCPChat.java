@@ -2,6 +2,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.Scanner;
 
 public class TCPChat {
@@ -16,6 +17,13 @@ public class TCPChat {
 		static PreparedStatement roomInfoStatement;
 	final static String USERS_IN_ROOM_SQL = "select u.name from users u, users_rooms ur where u.username = ur.username and r.room_id = ?;";
 		static PreparedStatement usersInRoomStatement;
+		
+	private static void prepareStatements() throws Exception {
+		findUserStatement = conn.prepareStatement(FIND_USER_SQL);
+		allRoomsStatement = conn.prepareStatement(ALL_ROOMS_SQL);
+		roomInfoStatement = conn.prepareStatement(ROOM_INFO_SQL);
+		usersInRoomStatement = conn.prepareStatement(USERS_IN_ROOM_SQL);
+	}
 
 	public static void main(String[] args) throws Exception {
 //		Message m = new Message ("hazarij", "hello there, this is Jordan!", System.currentTimeMillis());
@@ -60,11 +68,35 @@ public class TCPChat {
 		}
 	}
 	
-	private static void mainMenu() {
-		
+	private static void mainMenu() throws SQLException {
+		boolean choiceMade = false;
+		while (!choiceMade) {
+			System.out.print("MAIN MENU: "
+					+ "\n\t[1]\tView Rooms"
+					+ "\n\t[2]\tCreate Room"
+					+ "\n\t[3]\tSign Out"
+					+ "\n\nPlease make a selection: ");
+			int choice = in.nextInt();
+			
+			if (choice == 1) {
+				choiceMade = true;
+				allRoomsStatement.clearParameters();
+				ResultSet allRoomsSet = allRoomsStatement.executeQuery();
+				roomsMenu(allRoomsSet);
+			} else if (choice == 2) {
+				choiceMade = true;
+				
+			} else if (choice == 3) {
+				choiceMade = true;
+				System.out.println("Goodbye!");
+				System.exit(1);
+			} else {
+				System.out.println("INVALID CHOICE! Please choose from the numbers on the left.\n");
+			}
+		}
 	}
 	
-	private static void prepareStatements() throws Exception {
-		findUserStatement = conn.prepareStatement(FIND_USER_SQL);
+	private static void roomsMenu (ResultSet allRoomsSet) throws SQLException {
+		
 	}
 }
