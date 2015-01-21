@@ -9,7 +9,13 @@ public class TCPChat {
 	private static Connection conn;
 	
 	final static String FIND_USER_SQL = "select * from users where username = ?;";
-	static PreparedStatement findUserStatement;
+		static PreparedStatement findUserStatement;
+	final static String ALL_ROOMS_SQL = "select * from rooms;";
+		static PreparedStatement allRoomsStatement;
+	final static String ROOM_INFO_SQL = "select * from rooms where room_id = ?;";
+		static PreparedStatement roomInfoStatement;
+	final static String USERS_IN_ROOM_SQL = "select u.name from users u, users_rooms ur where u.username = ur.username and r.room_id = ?;";
+		static PreparedStatement usersInRoomStatement;
 
 	public static void main(String[] args) throws Exception {
 //		Message m = new Message ("hazarij", "hello there, this is Jordan!", System.currentTimeMillis());
@@ -44,6 +50,7 @@ public class TCPChat {
 				if (userSet.getString(2).equals(pword)) {
 					loggedIn = true;
 					System.out.println("Welcome, "+uname+"!\n");
+					mainMenu();
 				} else {
 					System.out.println("ERROR: incorrect password!\n");
 				}
@@ -51,7 +58,9 @@ public class TCPChat {
 				System.out.println("ERROR: username does not exist!\n");
 			}
 		}
-		
+	}
+	
+	private static void mainMenu() {
 		
 	}
 	

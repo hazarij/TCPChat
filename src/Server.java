@@ -1,9 +1,5 @@
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 
 /*
  * A Server that, when contacted, sends and receives data to/from
