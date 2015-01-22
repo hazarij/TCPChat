@@ -1,13 +1,20 @@
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.ServerSocket;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 
 public class TCPChat {
 	private static Scanner in;
 	private static Connection conn;
+	private static List<Room> allRooms;
+	private static String userHost;
 	
 	final static String FIND_USER_SQL = "select * from users where username = ?;";
 		static PreparedStatement findUserStatement;
@@ -35,6 +42,10 @@ public class TCPChat {
 //		System.out.println(m2.getUsername());
 //		System.out.println(m2.getMessage());
 //		System.out.println(new Timestamp(m2.getTimestamp()));
+		
+		allRooms = new ArrayList<Room>();
+		InetAddress local = InetAddress.getLocalHost();
+		userHost = local.getHostAddress();
 		
 		Class.forName("org.postgresql.Driver");
 		conn = DriverManager.getConnection("jdbc:postgresql://ec2-54-235-76-253.compute-1.amazonaws.com:5432/d7cusktdcbqqdj?username=rralvrdgeksflk&password=v1qVMUeKw1ff6jt2smrmF9kxqQ&ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory", "rralvrdgeksflk", "v1qVMUeKw1ff6jt2smrmF9kxqQ");
@@ -69,34 +80,110 @@ public class TCPChat {
 	}
 	
 	private static void mainMenu() throws SQLException {
-		boolean choiceMade = false;
-		while (!choiceMade) {
-			System.out.print("MAIN MENU: "
+		while (true) {
+			System.out.print("\nMAIN MENU: "
 					+ "\n\t[1]\tView Rooms"
 					+ "\n\t[2]\tCreate Room"
 					+ "\n\t[3]\tSign Out"
-					+ "\n\nPlease make a selection: ");
+					+ "\nPlease make a selection: ");
 			int choice = in.nextInt();
+			in.nextLine();
 			
 			if (choice == 1) {
-				choiceMade = true;
-				allRoomsStatement.clearParameters();
-				ResultSet allRoomsSet = allRoomsStatement.executeQuery();
-				roomsMenu(allRoomsSet);
+				roomsMenu();
 			} else if (choice == 2) {
-				choiceMade = true;
-				
+				createRoom();
 			} else if (choice == 3) {
-				choiceMade = true;
-				System.out.println("Goodbye!");
+				System.out.println("\nGoodbye!");
 				System.exit(1);
+			} else {
+				System.out.println("\nINVALID CHOICE! Please choose from the numbers on the left.");
+			}
+		}
+	}
+	
+	private static void roomsMenu () throws SQLException {
+		allRoomsStatement.clearParameters();
+		ResultSet allRoomsSet = allRoomsStatement.executeQuery();
+		
+		while (true) {
+			allRooms.clear();
+			System.out.println("\nAvailable Rooms:");
+			int i = 1;
+			while (allRoomsSet.next()) {
+				String name = allRoomsSet.getString(2);
+				String description = allRoomsSet.getString(3);
+				String host = allRoomsSet.getString(4);
+				int port = allRoomsSet.getInt(5);
+				
+				Room currRoom = new Room(name, description, host, port);
+				
+				allRooms.add(currRoom);
+				
+				System.out.println("\t["+i+"]\tView \""+name+"\"");
+				i++;
+			}
+			System.out.println("\t["+i+"]\tGo back to main menu");
+			System.out.print("Please make a selection: ");
+			int choice = in.nextInt();
+			in.nextLine();
+			
+			if (choice > 0 && choice <= allRooms.size()) {
+				roomInfo(allRooms.get(choice-1));
+			} else if (choice == allRooms.size()+1) {
+				mainMenu();
 			} else {
 				System.out.println("INVALID CHOICE! Please choose from the numbers on the left.\n");
 			}
 		}
 	}
 	
-	private static void roomsMenu (ResultSet allRoomsSet) throws SQLException {
+	private static void roomInfo (Room room) throws SQLException {
+		while (true) {
+			System.out.println("\nROOM NAME: "+room.getName());
+			System.out.println("DESCRIPTION: "+room.getDescription());
+			System.out.println("\t[1]\tJoin Room");
+			System.out.println("\t[2]\tGo back to room list");
+			System.out.println("\t[3]\tGo back to main menu");
+			System.out.print("Please make a selection: ");
+			int choice = in.nextInt();
+			in.nextLine();
+			
+			if (choice == 1) {
+				
+			} else if (choice == 2) {
+				roomsMenu();
+			} else if (choice == 3) {
+				mainMenu();
+			} else {
+				System.out.println("INVALID CHOICE! Please choose from the numbers on the left.\n");
+			}
+		}
+	}
+	
+	private static void createRoom() throws SQLException {
+		System.out.println("\n CREATE ROOM:");
+		System.out.print("\t Enter room name: ");
+		String name = in.nextLine();
+		System.out.print("\n\t Enter description: ");
+		String description = in.nextLine();
+		int port = findAPortNum();
 		
+		Room room = new Room(name, description, userHost, port);
+		Thread t = new Thread(room);
+		t.start();
+	}
+	
+	private static int findAPortNum() {
+		ServerSocket ss = null;
+		int num = -1;
+		try {
+			ss = new ServerSocket(0);
+			num = ss.getLocalPort();
+			ss.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return num;
 	}
 }

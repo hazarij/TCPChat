@@ -4,9 +4,7 @@ import java.net.Socket;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
-import java.util.HashSet;
 import java.util.Random;
-import java.util.Set;
 
 /*
  * A Server that, when contacted, sends and receives data to/from
@@ -18,18 +16,25 @@ class Room implements Runnable {
 	private String host;
 	private int port;
 	
-	private static Random rand;
+	private static final Random rand = new Random();
 	private static Connection conn;
 	
 	final static String ADD_ROOM_SQL = "insert into rooms (room_id, name, description, host, port) "
 			+ "values (" +rand.nextInt(Integer.MAX_VALUE)+ ", ?, ?, ?, ?);";
 	static PreparedStatement addRoomStatement;
 	
-	public Room(String name, String description, String host, int port, String username) {
+	private static void prepareStatements() throws Exception {
+		addRoomStatement = conn.prepareStatement(ADD_ROOM_SQL);
+	}
+	
+	public Room(String name, String description, String host, int port) {
 		this.name = name;
 		this.description = description;
 		this.host = host;
 		this.port = port;
+	}
+	
+	public void run() {
 		
 		try {
 			Class.forName("org.postgresql.Driver");
@@ -43,13 +48,10 @@ class Room implements Runnable {
 			addRoomStatement.setString(2, description);
 			addRoomStatement.setString(3, host);
 			addRoomStatement.setInt(4, port);
-			addRoomStatement.executeQuery();
+			addRoomStatement.execute();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-	}
-	
-	public void run() {
 		
 		ServerSocket servSock;
 		try {
@@ -68,7 +70,19 @@ class Room implements Runnable {
 		}
 	}
 	
-	private static void prepareStatements() throws Exception {
-		addRoomStatement = conn.prepareStatement(ADD_ROOM_SQL);
+	public String getName() {
+		return name;
+	}
+	
+	public String getDescription() {
+		return description;
+	}
+	
+	public String getHost() {
+		return host;
+	}
+	
+	public int getPort() {
+		return port;
 	}
 }
