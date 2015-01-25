@@ -1,6 +1,8 @@
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.UnknownHostException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -15,6 +17,8 @@ public class TCPChat {
 	private static Connection conn;
 	private static List<Room> allRooms;
 	private static String userHost;
+	private static String username;
+	private static boolean inRoom;
 	
 	final static String FIND_USER_SQL = "select * from users where username = ?;";
 		static PreparedStatement findUserStatement;
@@ -43,6 +47,8 @@ public class TCPChat {
 //		System.out.println(m2.getMessage());
 //		System.out.println(new Timestamp(m2.getTimestamp()));
 		
+		
+		inRoom = false;
 		allRooms = new ArrayList<Room>();
 		InetAddress local = InetAddress.getLocalHost();
 		userHost = local.getHostAddress();
@@ -57,10 +63,10 @@ public class TCPChat {
 		boolean loggedIn = false;
 		while (!loggedIn) {
 			System.out.print("Enter username: ");
-			String uname = in.next();
+			username = in.next();
 			
 			findUserStatement.clearParameters();
-			findUserStatement.setString(1, uname);
+			findUserStatement.setString(1, username);
 			ResultSet userSet = findUserStatement.executeQuery();
 			if (userSet.next()) {
 				System.out.print("Enter password: ");
@@ -68,7 +74,7 @@ public class TCPChat {
 				
 				if (userSet.getString(2).equals(pword)) {
 					loggedIn = true;
-					System.out.println("Welcome, "+uname+"!\n");
+					System.out.println("Welcome, "+username+"!\n");
 					mainMenu();
 				} else {
 					System.out.println("ERROR: incorrect password!\n");
@@ -80,7 +86,7 @@ public class TCPChat {
 	}
 	
 	private static void mainMenu() throws SQLException {
-		while (true) {
+		while (!inRoom) {
 			System.out.print("\nMAIN MENU: "
 					+ "\n\t[1]\tView Rooms"
 					+ "\n\t[2]\tCreate Room"
@@ -106,7 +112,7 @@ public class TCPChat {
 		allRoomsStatement.clearParameters();
 		ResultSet allRoomsSet = allRoomsStatement.executeQuery();
 		
-		while (true) {
+		while (!inRoom) {
 			allRooms.clear();
 			System.out.println("\nAvailable Rooms:");
 			int i = 1;
@@ -139,7 +145,7 @@ public class TCPChat {
 	}
 	
 	private static void roomInfo (Room room) throws SQLException {
-		while (true) {
+		while (!inRoom) {
 			System.out.println("\nROOM NAME: "+room.getName());
 			System.out.println("DESCRIPTION: "+room.getDescription());
 			System.out.println("\t[1]\tJoin Room");
@@ -150,7 +156,8 @@ public class TCPChat {
 			in.nextLine();
 			
 			if (choice == 1) {
-				
+				inRoom = true;
+				roomView(room);
 			} else if (choice == 2) {
 				roomsMenu();
 			} else if (choice == 3) {
@@ -185,5 +192,24 @@ public class TCPChat {
 			e.printStackTrace();
 		}
 		return num;
+	}
+	
+	private static void roomView (Room room) {
+		Socket clientSocket;
+		try {
+			clientSocket = new Socket(room.getHost(), room.getPort());
+			
+			Sender sender = new Sender(clientSocket, username);
+			Thread s = new Thread(sender);
+			s.start();
+			
+			Reader reader = new Reader(clientSocket);
+			Thread r = new Thread(reader);
+			r.start();
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 }

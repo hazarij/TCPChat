@@ -10,9 +10,11 @@ import java.net.Socket;
 class Sender implements Runnable {
 	// socket to send on
 	private Socket sock;
+	private String username;
 	
-	public Sender (Socket sock) {
+	public Sender (Socket sock, String username) {
 		this.sock = sock;
+		this.username = username;
 	}
 	
 	public void run() {
@@ -20,11 +22,14 @@ class Sender implements Runnable {
 			DataOutputStream outToClient = new DataOutputStream(sock.getOutputStream());
 			BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
 			
-			int readByte = in.read();
-			while (readByte != -1) {
-				outToClient.write(readByte);
+			String readLine = in.readLine();
+			while (readLine != null) {
+				Message m = new Message(username, readLine, System.currentTimeMillis());
+				byte[] bytes = m.getBytes();
+				
+				outToClient.write(bytes);
 				outToClient.flush();
-				readByte = in.read();
+				readLine = in.readLine();
 			}
 			in.close();
 			

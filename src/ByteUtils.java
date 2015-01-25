@@ -29,4 +29,13 @@ public class ByteUtils {
     	intBuffer.flip();
     	return intBuffer.getInt();
     }
+    
+    public static String bytesToIntArray (byte[] bytes) {
+    	String ints = "";
+    	for (int i = 0; i < bytes.length; i++) {
+    		ints += bytes[i] + " ";
+    	}
+    	
+    	return ints;
+    }
 }

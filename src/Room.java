@@ -1,10 +1,15 @@
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
+import java.util.Queue;
 import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 /*
  * A Server that, when contacted, sends and receives data to/from
@@ -15,6 +20,8 @@ class Room implements Runnable {
 	private String description;
 	private String host;
 	private int port;
+	private Queue<byte[]> messages;
+	private Set<DataOutputStream> outStreams;
 	
 	private static final Random rand = new Random();
 	private static Connection conn;
@@ -32,6 +39,8 @@ class Room implements Runnable {
 		this.description = description;
 		this.host = host;
 		this.port = port;
+		this.messages = new ConcurrentLinkedQueue<byte[]>();
+		this.outStreams = new CopyOnWriteArraySet<DataOutputStream>();
 	}
 	
 	public void run() {
@@ -61,8 +70,11 @@ class Room implements Runnable {
 			// when contacted
 			while (true) {
 				Socket connectionSocket = servSock.accept();
-				RoomSender sender = new RoomSender(connectionSocket);
-				Thread s = new Thread(sender);
+				DataOutputStream out = new DataOutputStream(connectionSocket.getOutputStream());
+				outStreams.add(out);
+				System.out.println("new connection");
+				RoomServer server = new RoomServer(connectionSocket, messages, outStreams);
+				Thread s = new Thread(server);
 				s.start();
 			}
 		} catch (IOException e) {
