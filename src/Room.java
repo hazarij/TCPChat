@@ -20,6 +20,7 @@ class Room implements Runnable {
 	private String description;
 	private String host;
 	private int port;
+	private int room_id;
 	private Queue<byte[]> messages;
 	private Set<DataOutputStream> outStreams;
 	
@@ -27,7 +28,7 @@ class Room implements Runnable {
 	private static Connection conn;
 	
 	final static String ADD_ROOM_SQL = "insert into rooms (room_id, name, description, host, port) "
-			+ "values (" +rand.nextInt(Integer.MAX_VALUE)+ ", ?, ?, ?, ?);";
+			+ "values (?, ?, ?, ?, ?);";
 	static PreparedStatement addRoomStatement;
 	
 	private static void prepareStatements() throws Exception {
@@ -39,6 +40,17 @@ class Room implements Runnable {
 		this.description = description;
 		this.host = host;
 		this.port = port;
+		this.room_id = rand.nextInt(Integer.MAX_VALUE);
+		this.messages = new ConcurrentLinkedQueue<byte[]>();
+		this.outStreams = new CopyOnWriteArraySet<DataOutputStream>();
+	}
+	
+	public Room(String name, String description, String host, int port, int room_id) {
+		this.name = name;
+		this.description = description;
+		this.host = host;
+		this.port = port;
+		this.room_id = room_id;
 		this.messages = new ConcurrentLinkedQueue<byte[]>();
 		this.outStreams = new CopyOnWriteArraySet<DataOutputStream>();
 	}
@@ -53,10 +65,11 @@ class Room implements Runnable {
 			prepareStatements();
 			
 			addRoomStatement.clearParameters();
-			addRoomStatement.setString(1, name);
-			addRoomStatement.setString(2, description);
-			addRoomStatement.setString(3, host);
-			addRoomStatement.setInt(4, port);
+			addRoomStatement.setInt(1, room_id);
+			addRoomStatement.setString(2, name);
+			addRoomStatement.setString(3, description);
+			addRoomStatement.setString(4, host);
+			addRoomStatement.setInt(5, port);
 			addRoomStatement.execute();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -72,7 +85,7 @@ class Room implements Runnable {
 				Socket connectionSocket = servSock.accept();
 				DataOutputStream out = new DataOutputStream(connectionSocket.getOutputStream());
 				outStreams.add(out);
-				System.out.println("new connection");
+				//System.out.println("new connection");
 				RoomServer server = new RoomServer(connectionSocket, messages, outStreams);
 				Thread s = new Thread(server);
 				s.start();
@@ -96,5 +109,9 @@ class Room implements Runnable {
 	
 	public int getPort() {
 		return port;
+	}
+	
+	public int getID() {
+		return room_id;
 	}
 }

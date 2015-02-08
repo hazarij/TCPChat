@@ -1,5 +1,9 @@
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
@@ -9,6 +13,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.InputMismatchException;
 import java.util.List;
 import java.util.Scanner;
 
@@ -28,12 +33,15 @@ public class TCPChat {
 		static PreparedStatement roomInfoStatement;
 	final static String USERS_IN_ROOM_SQL = "select u.name from users u, users_rooms ur where u.username = ur.username and r.room_id = ?;";
 		static PreparedStatement usersInRoomStatement;
+	final static String DELETE_ROOM_SQL = "delete from rooms where room_id = ?;";
+		static PreparedStatement deleteRoomStatement;
 		
 	private static void prepareStatements() throws Exception {
 		findUserStatement = conn.prepareStatement(FIND_USER_SQL);
 		allRoomsStatement = conn.prepareStatement(ALL_ROOMS_SQL);
 		roomInfoStatement = conn.prepareStatement(ROOM_INFO_SQL);
 		usersInRoomStatement = conn.prepareStatement(USERS_IN_ROOM_SQL);
+		deleteRoomStatement = conn.prepareStatement(DELETE_ROOM_SQL);
 	}
 
 	public static void main(String[] args) throws Exception {
@@ -47,6 +55,9 @@ public class TCPChat {
 //		System.out.println(m2.getMessage());
 //		System.out.println(new Timestamp(m2.getTimestamp()));
 		
+//		CleanupRooms roomCleaner = new CleanupRooms();
+//		Thread cleanerThread = new Thread(roomCleaner);
+//		cleanerThread.start();
 		
 		inRoom = false;
 		allRooms = new ArrayList<Room>();
@@ -92,7 +103,12 @@ public class TCPChat {
 					+ "\n\t[2]\tCreate Room"
 					+ "\n\t[3]\tSign Out"
 					+ "\nPlease make a selection: ");
-			int choice = in.nextInt();
+			int choice;
+			try {
+				choice = in.nextInt();
+			} catch (InputMismatchException e) {
+				choice = -1;
+			}
 			in.nextLine();
 			
 			if (choice == 1) {
@@ -121,8 +137,9 @@ public class TCPChat {
 				String description = allRoomsSet.getString(3);
 				String host = allRoomsSet.getString(4);
 				int port = allRoomsSet.getInt(5);
+				int room_id = allRoomsSet.getInt(1);
 				
-				Room currRoom = new Room(name, description, host, port);
+				Room currRoom = new Room(name, description, host, port, room_id);
 				
 				allRooms.add(currRoom);
 				
@@ -131,7 +148,12 @@ public class TCPChat {
 			}
 			System.out.println("\t["+i+"]\tGo back to main menu");
 			System.out.print("Please make a selection: ");
-			int choice = in.nextInt();
+			int choice;
+			try {
+				choice = in.nextInt();
+			} catch (InputMismatchException e) {
+				choice = -1;
+			}
 			in.nextLine();
 			
 			if (choice > 0 && choice <= allRooms.size()) {
@@ -152,7 +174,12 @@ public class TCPChat {
 			System.out.println("\t[2]\tGo back to room list");
 			System.out.println("\t[3]\tGo back to main menu");
 			System.out.print("Please make a selection: ");
-			int choice = in.nextInt();
+			int choice;
+			try {
+				choice = in.nextInt();
+			} catch (InputMismatchException e) {
+				choice = -1;
+			}
 			in.nextLine();
 			
 			if (choice == 1) {
@@ -210,6 +237,41 @@ public class TCPChat {
 			e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
+		}
+	}
+	
+	private static class CleanupRooms implements Runnable {
+		private Socket cleanSock;
+		
+		public CleanupRooms () {
+		}
+		
+		public void run() {
+			while (true) {
+				for (Room room: allRooms) {
+					cleanSock = new Socket();
+					final int timeout = 3000;
+					try {
+						cleanSock.connect(new InetSocketAddress(room.getHost(), room.getPort()), timeout);
+						cleanSock.close();
+					} catch (Exception e) {
+						// Delete room from db
+						try {
+							System.out.println("attempting to delete room: "+room.getID());
+							deleteRoomStatement.clearParameters();
+							deleteRoomStatement.setInt(1, room.getID());
+							deleteRoomStatement.execute();
+							allRooms.remove(room);
+							cleanSock.close();
+						} catch (SQLException e1) {
+							// TODO Auto-generated catch block
+							e1.printStackTrace();
+						} catch (IOException e2) {
+							e2.printStackTrace();
+						}
+					}
+				}
+			}
 		}
 	}
 }
